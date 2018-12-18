@@ -12,5 +12,5 @@ if(NOT Boost_FOUND)
 endif()
 
 find_package(Boost 1.55.0 REQUIRED COMPONENTS system filesystem)
-add_executable(Assignment_3_Client src/connectionHandler.cpp src/echoClient.cpp)
+add_executable(Assignment_3_Client src/connectionHandler.cpp src/echoClient.cpp src/ReadSocket.cpp include/ReadSocket.h)
 target_link_libraries(Assignment_3_Client boost_system)
