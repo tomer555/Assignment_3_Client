@@ -66,8 +66,32 @@ bool ConnectionHandler::getLine(std::string& line) {
     return getFrameAscii(line, '\n');
 }
 
-bool ConnectionHandler::sendLine(std::string& line) {
-    return sendFrameAscii(line, '\n');
+bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
+    char *OpByteArr = new char[2];
+    shortToBytes(Opcode, OpByteArr);
+    bool resultOp = sendBytes(OpByteArr, 2);
+    delete[]OpByteArr;
+    if (resultOp) {
+        switch (Opcode) {
+            case 1:
+            case 2:
+                return sendRegisterLoginFrame(line);
+            case 3:
+            case 7:
+                return true;
+            case 4:
+                return sendFollowUnfollowFrame(line);
+            case 5:
+                return sendPostFrame(line);
+            case 6:
+                return sendPmFrame(line);
+            case 8:
+                return sendStatFrame(line);
+            default:
+                return false;
+        }
+    }
+    return false;
 }
  
 bool ConnectionHandler::getFrameAscii(std::string& frame, char delimiter) {
@@ -100,3 +124,64 @@ void ConnectionHandler::close() {
         std::cout << "closing failed: connection already closed" << std::endl;
     }
 }
+
+short ConnectionHandler::bytesToShort(char* bytesArr)
+{
+    short result = (short)((bytesArr[0] & 0xff) << 8);
+    result += (short)(bytesArr[1] & 0xff);
+    return result;
+}
+
+
+void ConnectionHandler:: shortToBytes(short num, char* bytesArr)
+{
+    bytesArr[0] = ((num >> 8) & 0xFF);
+    bytesArr[1] = (num & 0xFF);
+}
+
+bool ConnectionHandler::sendRegisterLoginFrame(const std::string& line) {
+    //parsing
+    std::string username=line.substr(0,line.find(' '));
+    std::string password=line.substr(line.find(' '));
+    //sending
+    bool resultUSR=sendFrameAscii(username,'\0');
+    if(!resultUSR)
+        return false;
+    bool resultPSW=sendFrameAscii(password,'\0');
+    return resultPSW;
+}
+
+bool ConnectionHandler::sendPmFrame(const std::string& line){
+    //parsing
+    std::string username=line.substr(0,line.find(' '));
+    std::string content=line.substr(line.find(' '));
+
+    bool resultUSR=sendFrameAscii(username,'\0');
+    if(!resultUSR) return false;
+    bool resultCNT=sendFrameAscii(content,'\0');
+    return resultCNT;
+}
+
+bool ConnectionHandler::sendPostFrame(const std::string& line){
+    //parsing
+
+
+    return sendFrameAscii(content,'\0');
+}
+
+
+bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
+    //parsing
+
+
+
+}
+
+bool ConnectionHandler::sendStatFrame(const std::string &line) {
+    //parsing
+
+    return sendFrameAscii(username,'\0');
+
+}
+
+

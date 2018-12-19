@@ -7,6 +7,7 @@
 
 using boost::asio::ip::tcp;
 
+//class ConnectionHandler
 class ConnectionHandler {
 private:
 	const std::string host_;
@@ -17,7 +18,7 @@ private:
 public:
     ConnectionHandler(std::string host, short port);
     virtual ~ConnectionHandler();
- 
+
     // Connect to the remote machine
     bool connect();
  
@@ -35,7 +36,7 @@ public:
 	
 	// Send an ascii line from the server
     // Returns false in case connection closed before all the data is sent.
-    bool sendLine(std::string& line);
+    bool sendLine(std::string& line,short Opcode);
  
     // Get Ascii data from the server until the delimiter character
     // Returns false in case connection closed before null can be read.
@@ -44,10 +45,26 @@ public:
     // Send a message to the remote host.
     // Returns false in case connection is closed before all the data is sent.
     bool sendFrameAscii(const std::string& frame, char delimiter);
-	
+
+
+    short bytesToShort(char* bytesArr);
+
+
+    void shortToBytes(short num, char* bytesArr);
+
+    bool sendRegisterLoginFrame(const std::string& line);
+
+    bool sendPostFrame(const std::string& line);
+
+    bool sendPmFrame(const std::string& line);
+
+    bool sendFollowUnfollowFrame(const std::string& line);
+
+    bool sendStatFrame(const std::string& line);
+
     // Close down the connection properly.
     void close();
  
-}; //class ConnectionHandler
+};
  
 #endif
