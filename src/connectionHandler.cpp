@@ -2,19 +2,21 @@
 #include "../include/BGSClient.h"
 
 using boost::asio::ip::tcp;
-
 using std::cin;
 using std::cout;
 using std::cerr;
 using std::endl;
 using std::string;
- 
+
+//ConnectionHandler Constructor
 ConnectionHandler::ConnectionHandler(string host, short port): host_(host), port_(port), io_service_(), socket_(io_service_){}
-    
+
+//ConnectionHandler Destructor
 ConnectionHandler::~ConnectionHandler() {
     close();
 }
- 
+//--------------Server Connection---------------------------
+//connecting to the server using boost package
 bool ConnectionHandler::connect() {
     std::cout << "Starting connect to " 
         << host_ << ":" << port_ << std::endl;
@@ -31,58 +33,20 @@ bool ConnectionHandler::connect() {
     }
     return true;
 }
- 
-bool ConnectionHandler::getBytes(char bytes[], unsigned int bytesToRead) {
-    size_t tmp = 0;
-	boost::system::error_code error;
-    try {
-        while (!error && bytesToRead > tmp ) {
-			tmp += socket_.read_some(boost::asio::buffer(bytes+tmp, bytesToRead-tmp), error);			
-        }
-		if(error)
-			throw boost::system::system_error(error);
-    } catch (std::exception& e) {
-        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
-        return false;
+
+// Close down the connection properly.
+void ConnectionHandler::close() {
+    try{
+        socket_.close();
+    } catch (...) {
+        std::cout << "closing failed: connection already closed" << std::endl;
     }
-    return true;
 }
 
-bool ConnectionHandler::sendBytes(const char bytes[], int bytesToWrite) {
-    int tmp = 0;
-	boost::system::error_code error;
-    try {
-        while (!error && bytesToWrite > tmp ) {
-			tmp += socket_.write_some(boost::asio::buffer(bytes + tmp, bytesToWrite - tmp), error);
-        }
-		if(error)
-			throw boost::system::system_error(error);
-    } catch (std::exception& e) {
-        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
-        return false;
-    }
-    return true;
-}
- 
-bool ConnectionHandler::getLine(std::string& line) {
-    char *OpByteArr = new char[2];
-    bool resultOpcode=getFrameTwoByte(OpByteArr);
-    if(!resultOpcode)
-        return false;
-    short Opcode=bytesToShort(OpByteArr);
-    switch (Opcode) {
-        case 9:
-            return getNotificationFrame(line);
-        case 10:
-            return getAckFrame(line);
-        case 11:
-            return getErrorFrame(line);
-        default:
-            return false;
-    }
 
-}
+//---------------Sending Message to server------------------------
 
+//Sending line according to its Opcode.
 bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
     char *OpByteArr = new char[2];
     shortToBytes(Opcode, OpByteArr);
@@ -99,11 +63,11 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
             case 4:
                 return sendFollowUnfollowFrame(line);
             case 5:
-                return sendPostFrame(line);
+                return sendFrameAscii(line,'\0');
             case 6:
                 return sendPmFrame(line);
             case 8:
-                return sendStatFrame(line);
+                return sendFrameAscii(line,'\0');
             default:
                 return false;
         }
@@ -111,67 +75,7 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
     return false;
 }
 
-
-
-
-bool ConnectionHandler::getFrameTwoByte(char* bytesArr){
-    char ch1;
-    char ch2;
-    try {
-        bytesArr[0]=getBytes(&ch1,1);
-        bytesArr[1]=getBytes(&ch2,1);
-    }
-    catch (std::exception& e) {
-        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
-        return false;
-    }
-    return true;
-}
-bool ConnectionHandler::getFrameAscii(std::string& frame, char delimiter) {
-    char ch;
-    // Stop when we encounter the null character. 
-    // Notice that the null character is not appended to the frame string.
-    try {
-		do{
-			getBytes(&ch, 1);
-            frame.append(1, ch);
-        }while (delimiter != ch);
-    } catch (std::exception& e) {
-        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
-        return false;
-    }
-    return true;
-}
- 
-bool ConnectionHandler::sendFrameAscii(const std::string& frame, char delimiter) {
-	bool result=sendBytes(frame.c_str(),frame.length());
-	if(!result) return false;
-	return sendBytes(&delimiter,1);
-}
- 
-// Close down the connection properly.
-void ConnectionHandler::close() {
-    try{
-        socket_.close();
-    } catch (...) {
-        std::cout << "closing failed: connection already closed" << std::endl;
-    }
-}
-
-short ConnectionHandler::bytesToShort(char* bytesArr)
-{
-    short result = (short)((bytesArr[0] & 0xff) << 8);
-    result += (short)(bytesArr[1] & 0xff);
-    return result;
-}
-
-
-void ConnectionHandler:: shortToBytes(short num, char* bytesArr)
-{
-    bytesArr[0] = ((num >> 8) & 0xFF);
-    bytesArr[1] = (num & 0xFF);
-}
-
+//Parsing and sending the line according to Register/Login frame (Opcode 1,2)
 bool ConnectionHandler::sendRegisterLoginFrame(const std::string& line) {
     //parsing
     std::string username=line.substr(0,line.find(' '));
@@ -184,22 +88,7 @@ bool ConnectionHandler::sendRegisterLoginFrame(const std::string& line) {
     return resultPSW;
 }
 
-bool ConnectionHandler::sendPmFrame(const std::string& line){
-    //parsing
-    std::string username=line.substr(0,line.find(' '));
-    std::string content=line.substr(line.find(' '));
-    //sending
-    bool resultUSR=sendFrameAscii(username,'\0');
-    if(!resultUSR) return false;
-    bool resultCNT=sendFrameAscii(content,'\0');
-    return resultCNT;
-}
-
-bool ConnectionHandler::sendPostFrame(const std::string& line){
-    return sendFrameAscii(line,'\0');
-}
-
-
+//Parsing and sending the line according to Follow/Unfollow frame (Opcode 4)
 bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
     //parsing
     std::string fopcodeString = line.substr(0, line.find(' '));//Follow Opcode
@@ -229,10 +118,68 @@ bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
     return sendFrameAscii(usrNameList,'\0');
 }
 
-bool ConnectionHandler::sendStatFrame(const std::string &line) {
-    return sendFrameAscii(line,'\0');
+//Parsing and sending the line according to PM frame (Opcode 6)
+bool ConnectionHandler::sendPmFrame(const std::string& line){
+    //parsing
+    std::string username=line.substr(0,line.find(' '));
+    std::string content=line.substr(line.find(' '));
+    //sending
+    bool resultUSR=sendFrameAscii(username,'\0');
+    if(!resultUSR) return false;
+    bool resultCNT=sendFrameAscii(content,'\0');
+    return resultCNT;
 }
 
+// Send a message(UTF-8) to the remote host. separated by the delimiter
+// Returns false in case connection is closed before all the data is sent.
+bool ConnectionHandler::sendFrameAscii(const std::string& frame, char delimiter) {
+    bool result=sendBytes(frame.c_str(),frame.length());
+    if(!result) return false;
+    return sendBytes(&delimiter,1);
+}
+
+// Send a fixed number of bytes from the client - blocking.
+// Returns false in case the connection is closed before all the data is sent.
+bool ConnectionHandler::sendBytes(const char bytes[], int bytesToWrite) {
+    int tmp = 0;
+    boost::system::error_code error;
+    try {
+        while (!error && bytesToWrite > tmp ) {
+            tmp += socket_.write_some(boost::asio::buffer(bytes + tmp, bytesToWrite - tmp), error);
+        }
+        if(error)
+            throw boost::system::system_error(error);
+    } catch (std::exception& e) {
+        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
+        return false;
+    }
+    return true;
+}
+
+
+//---------------Receiving Message from server-----------------------
+
+//Receiving line according to its Opcode.
+bool ConnectionHandler::getLine(std::string& line) {
+    char *OpByteArr = new char[2];
+    bool resultOpcode=getFrameTwoByte(OpByteArr);
+    if(!resultOpcode)
+        return false;
+    short Opcode=bytesToShort(OpByteArr);
+    delete []OpByteArr;
+    switch (Opcode) {
+        case 9:
+            return getNotificationFrame(line);
+        case 10:
+            return getAckFrame(line);
+        case 11:
+            return getErrorFrame(line);
+        default:
+            return false;
+    }
+}
+
+//Receive and decode the bytes according to Notification frame (Opcode 9)
 bool ConnectionHandler::getNotificationFrame(std::string &frame) {
     frame.append("NOTIFICATION ");
     char *OpByteArr = new char[2];
@@ -255,6 +202,7 @@ bool ConnectionHandler::getNotificationFrame(std::string &frame) {
     return true;
 }
 
+//Receive and decode the bytes according to ACK frame (Opcode 10)
 bool ConnectionHandler::getAckFrame(std::string &frame) {
     frame.append("ACK ");
     char *OpByteArr = new char[2];
@@ -270,6 +218,7 @@ bool ConnectionHandler::getAckFrame(std::string &frame) {
     return true;
 }
 
+//Receive and decode the bytes according to Error frame (Opcode 11)
 bool ConnectionHandler::getErrorFrame(std::string &frame) {
     frame.append("Error ");
     char *OpByteArr = new char[2];
@@ -280,5 +229,95 @@ bool ConnectionHandler::getErrorFrame(std::string &frame) {
     frame.append(boost::lexical_cast<std::string>(Opcode));
     return true;
 }
+
+// Get Ascii data from the server until the delimiter character
+// Returns false in case connection closed before null can be read.
+bool ConnectionHandler::getFrameAscii(std::string& frame, char delimiter) {
+    char ch;
+    // Stop when we encounter the null character.
+    // Notice that the null character is not appended to the frame string.
+    try {
+        do{
+            getBytes(&ch, 1);
+            frame.append(1, ch);
+        }while (delimiter != ch);
+    } catch (std::exception& e) {
+        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
+        return false;
+    }
+    return true;
+}
+
+//Get 2 bytes data from the server
+bool ConnectionHandler::getFrameTwoByte(char* bytesArr){
+    char ch1;
+    char ch2;
+    try {
+        bytesArr[0]=getBytes(&ch1,1);
+        bytesArr[1]=getBytes(&ch2,1);
+    }
+    catch (std::exception& e) {
+        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
+        return false;
+    }
+    return true;
+}
+
+// Read a fixed number of bytes from the server - blocking.
+// Returns false in case the connection is closed before bytesToRead bytes can be read.
+bool ConnectionHandler::getBytes(char bytes[], unsigned int bytesToRead) {
+    size_t tmp = 0;
+	boost::system::error_code error;
+    try {
+        while (!error && bytesToRead > tmp )
+			tmp += socket_.read_some(boost::asio::buffer(bytes+tmp, bytesToRead-tmp), error);
+		if(error)
+			throw boost::system::system_error(error);
+    } catch (std::exception& e) {
+        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
+        return false;
+    }
+    return true;
+}
+
+//-----------------byteToshort\ShortToByte--------------
+short ConnectionHandler::bytesToShort(char* bytesArr)
+{
+    short result = (short)((bytesArr[0] & 0xff) << 8);
+    result += (short)(bytesArr[1] & 0xff);
+    return result;
+}
+
+void ConnectionHandler:: shortToBytes(short num, char* bytesArr)
+{
+    bytesArr[0] = ((num >> 8) & 0xFF);
+    bytesArr[1] = (num & 0xFF);
+}
+
+
+
+
+
+
+
+
+
+ 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

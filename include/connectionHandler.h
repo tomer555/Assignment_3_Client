@@ -63,13 +63,9 @@ public:
 
     bool sendRegisterLoginFrame(const std::string& line);
 
-    bool sendPostFrame(const std::string& line);
-
     bool sendPmFrame(const std::string& line);
 
     bool sendFollowUnfollowFrame(const std::string& line);
-
-    bool sendStatFrame(const std::string& line);
 
     // Close down the connection properly.
     void close();

@@ -4,26 +4,31 @@
 #include "../include/BGSClient.h"
 
 /**
-* This code assumes that the server replies the exact text the client sent it (as opposed to the practical session example)
+ * BGS Client:
+* This code uses 2 threads:
+ * thread0: running the main, establish connection with the server and getting input from user.
+ * thread1: running ReadFromSocket, print all the input that comes from the server.
 */
 
 int main (int argc, char *argv[]) {
+    //Checking args : host and port
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " host port" << std::endl << std::endl;
         return -1;
     }
     std::string host = argv[1];
     short port = atoi(argv[2]);
-    
+
+    //Establishing connection with a server
     ConnectionHandler *connectionHandler=new ConnectionHandler (host, port);
     if (!connectionHandler->connect()) {
         std::cerr << "Cannot connect to " << host << ":" << port << std::endl;
         return 1;
     }
-
+    //Creating thread1 : reading from Socket
     std::thread th1(ReadFromSocket,connectionHandler);
 
-	//From here we will see the rest of the ehco client implementation:
+	//Accepting input string from user. Exit on command: LOGOUT
 	std::string line;
     while (line.find("LOGOUT")== std::string::npos) {
         const short bufsize = 1024;
@@ -39,11 +44,15 @@ int main (int argc, char *argv[]) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
-            // connectionHandler.sendLine(line) appends '\n' to the message. Therefor we send len+1 bytes.
-            std::cout << "Sent " << len + 1 << " bytes to server" << std::endl;
+            std::cout << "Sent " << len << " bytes to server without delimiter bytes" << std::endl;
         } else
             std::cout << "No such Command exists: " << first_token << ", please try again" << std::endl;
     }
+    //waiting for thread1 to finish: waiting server response : ACK 3(LOGOUT)
+    th1.join();
+    //Closing the connection with the server
+    delete connectionHandler;
+
     return 0;
 }
 
@@ -73,12 +82,10 @@ void ReadFromSocket(ConnectionHandler & connectionHandler){
             std::cout << "Exiting...\n" << std::endl;
             break;
         }
-
     }
-
-
 }
 
+//Static Function to convert String to Opcode
 short StringToOpcode(const std::string & s){
     if(s=="REGISTER")
         return 1;
