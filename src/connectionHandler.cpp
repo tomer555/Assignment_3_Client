@@ -1,4 +1,6 @@
 #include "../include/connectionHandler.h"
+#include "../include/BGSClient.h"
+
 using boost::asio::ip::tcp;
 
 using std::cin;
@@ -63,7 +65,22 @@ bool ConnectionHandler::sendBytes(const char bytes[], int bytesToWrite) {
 }
  
 bool ConnectionHandler::getLine(std::string& line) {
-    return getFrameAscii(line, '\n');
+    char *OpByteArr = new char[2];
+    bool resultOpcode=getFrameTwoByte(OpByteArr);
+    if(!resultOpcode)
+        return false;
+    short Opcode=bytesToShort(OpByteArr);
+    switch (Opcode) {
+        case 9:
+            return getNotificationFrame(line);
+        case 10:
+            return getAckFrame(line);
+        case 11:
+            return getErrorFrame(line);
+        default:
+            return false;
+    }
+
 }
 
 bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
@@ -93,7 +110,23 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
     }
     return false;
 }
- 
+
+
+
+
+bool ConnectionHandler::getFrameTwoByte(char* bytesArr){
+    char ch1;
+    char ch2;
+    try {
+        bytesArr[0]=getBytes(&ch1,1);
+        bytesArr[1]=getBytes(&ch2,1);
+    }
+    catch (std::exception& e) {
+        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
+        return false;
+    }
+    return true;
+}
 bool ConnectionHandler::getFrameAscii(std::string& frame, char delimiter) {
     char ch;
     // Stop when we encounter the null character. 
@@ -155,7 +188,7 @@ bool ConnectionHandler::sendPmFrame(const std::string& line){
     //parsing
     std::string username=line.substr(0,line.find(' '));
     std::string content=line.substr(line.find(' '));
-
+    //sending
     bool resultUSR=sendFrameAscii(username,'\0');
     if(!resultUSR) return false;
     bool resultCNT=sendFrameAscii(content,'\0');
@@ -163,25 +196,89 @@ bool ConnectionHandler::sendPmFrame(const std::string& line){
 }
 
 bool ConnectionHandler::sendPostFrame(const std::string& line){
-    //parsing
-
-
-    return sendFrameAscii(content,'\0');
+    return sendFrameAscii(line,'\0');
 }
 
 
 bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
     //parsing
+    std::string fopcodeString = line.substr(0, line.find(' '));//Follow Opcode
+    std::string restWithNum=line.substr(line.find(' '));
+    std::string usrNumString=restWithNum.substr(0,line.find(' '));
+    std::string usrNameList=restWithNum.substr(line.find(' '));
+    short followOpcode =StringToOpcode(fopcodeString);
+    short NumOfUsers =StringToOpcode(usrNumString);
+    char *OpByteArr1 = new char[2];
+    char *OpByteArr2 = new char[2];
 
+    shortToBytes(followOpcode, OpByteArr1);
+    shortToBytes(NumOfUsers, OpByteArr2);
 
-
+    bool resultOp = sendBytes(OpByteArr1, 2);
+    if(!resultOp){
+        delete []OpByteArr1;
+        delete []OpByteArr2;
+        return false;
+    }
+    bool resultNum = sendBytes(OpByteArr2, 2);
+    if(!resultNum){
+        delete []OpByteArr1;
+        delete []OpByteArr2;
+        return false;
+    }
+    return sendFrameAscii(usrNameList,'\0');
 }
 
 bool ConnectionHandler::sendStatFrame(const std::string &line) {
-    //parsing
+    return sendFrameAscii(line,'\0');
+}
 
-    return sendFrameAscii(username,'\0');
+bool ConnectionHandler::getNotificationFrame(std::string &frame) {
+    frame.append("NOTIFICATION ");
+    char *OpByteArr = new char[2];
+    bool resultOpcode=getFrameTwoByte(OpByteArr);
+    delete []OpByteArr;
+    if(!resultOpcode)return false;
+    short Opcode=bytesToShort(OpByteArr);
+    if (Opcode==0)
+        frame.append("PM ");
+    else
+        frame.append("Public ");
+    std::string postingUser;
+    bool resultPosting=getFrameAscii(postingUser,'\0');
+    if(!resultPosting)return false;
+    frame.append(postingUser+" ");
+    std::string content;
+    bool resultContent=getFrameAscii(content,'\0');
+    if(!resultContent)return false;
+    frame.append(content);
+    return true;
+}
 
+bool ConnectionHandler::getAckFrame(std::string &frame) {
+    frame.append("ACK ");
+    char *OpByteArr = new char[2];
+    bool resultOpcode=getFrameTwoByte(OpByteArr);
+    delete []OpByteArr;
+    if(!resultOpcode)return false;
+    short Opcode=bytesToShort(OpByteArr);
+    frame.append(boost::lexical_cast<std::string>(Opcode));
+    std::string optional;
+    bool resultOptinal=getFrameAscii(optional,'\0');
+    if(!resultOptinal)return false;
+    frame.append(optional);
+    return true;
+}
+
+bool ConnectionHandler::getErrorFrame(std::string &frame) {
+    frame.append("Error ");
+    char *OpByteArr = new char[2];
+    bool resultOpcode=getFrameTwoByte(OpByteArr);
+    delete []OpByteArr;
+    if(!resultOpcode)return false;
+    short Opcode=bytesToShort(OpByteArr);
+    frame.append(boost::lexical_cast<std::string>(Opcode));
+    return true;
 }
 
 

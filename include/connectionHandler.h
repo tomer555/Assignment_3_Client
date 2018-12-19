@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <boost/asio.hpp>
+#include <boost/lexical_cast.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -41,6 +42,14 @@ public:
     // Get Ascii data from the server until the delimiter character
     // Returns false in case connection closed before null can be read.
     bool getFrameAscii(std::string& frame, char delimiter);
+
+    bool getFrameTwoByte(char* bytesArr);
+
+    bool getNotificationFrame(std::string& frame);
+
+    bool getAckFrame(std::string& frame);
+
+    bool getErrorFrame(std::string& frame);
  
     // Send a message to the remote host.
     // Returns false in case connection is closed before all the data is sent.

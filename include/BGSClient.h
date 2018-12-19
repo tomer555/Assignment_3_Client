@@ -8,7 +8,7 @@
 #include "connectionHandler.h"
 
 void ReadFromSocket(ConnectionHandler & connectionHandler);
-short StringToOpcode(const std::string & s);
+static short StringToOpcode(const std::string & s);
 
 
 
