@@ -24,11 +24,12 @@ int main (int argc, char *argv[]) {
     std::thread th1(ReadFromSocket,connectionHandler);
 
 	//From here we will see the rest of the ehco client implementation:
-    while (true) {
+	std::string line;
+    while (line.find("LOGOUT")== std::string::npos) {
         const short bufsize = 1024;
         char buf[bufsize];
         std::cin.getline(buf, bufsize);
-        std::string line(buf);
+        line=buf;//Copy assignment
         std::string first_token = line.substr(0, line.find(' '));
         std::string message = line.substr (line.find(' '));
         short Opcode =StringToOpcode(first_token);
