@@ -3,6 +3,8 @@ project(Assignment_3_Client)
 
 set(CMAKE_CXX_STANDARD 11)
 
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+
 set(BOOST_ROOT "/path_to_boost_1_57_0")
 
 find_package(Boost 1.57.0)
@@ -12,5 +14,5 @@ if(NOT Boost_FOUND)
 endif()
 
 find_package(Boost 1.55.0 REQUIRED COMPONENTS system filesystem)
-add_executable(Assignment_3_Client src/connectionHandler.cpp src/BGSClient.cpp include/BGSClient.h)
+add_executable(Assignment_3_Client src/connectionHandler.cpp src/BGSClient.cpp src/SocketReader.cpp include/SocketReader.h)
 target_link_libraries(Assignment_3_Client boost_system)

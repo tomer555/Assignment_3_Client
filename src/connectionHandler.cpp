@@ -1,5 +1,5 @@
 #include "../include/connectionHandler.h"
-#include "../include/BGSClient.h"
+
 
 using boost::asio::ip::tcp;
 using std::cin;
@@ -294,6 +294,33 @@ void ConnectionHandler:: shortToBytes(short num, char* bytesArr)
     bytesArr[1] = (num & 0xFF);
 }
 
+
+//Static Function to convert String to Opcode
+short ConnectionHandler:: StringToOpcode(const std::string & s){
+    if(s=="REGISTER")
+        return 1;
+    else if(s=="LOGIN")
+        return 2;
+    else if(s=="LOGOUT")
+        return 3;
+    else if(s=="FOLLOW")
+        return 4;
+    else if(s=="POST")
+        return 5;
+    else if(s=="PM")
+        return 6;
+    else if(s=="USERLIST")
+        return 7;
+    else if(s=="STAT")
+        return 8;
+    else if(s=="NOTIFICATION")
+        return 9;
+    else if(s=="ACK")
+        return 10;
+    else if(s=="ERROR")
+        return 11;
+    return 0;
+}
 
 
 

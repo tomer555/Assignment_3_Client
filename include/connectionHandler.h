@@ -19,7 +19,7 @@ private:
 public:
     ConnectionHandler(std::string host, short port);
     virtual ~ConnectionHandler();
-
+    short StringToOpcode(const std::string & s);
     // Connect to the remote machine
     bool connect();
  
