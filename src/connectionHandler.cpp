@@ -1,3 +1,4 @@
+#include <zconf.h>
 #include "../include/connectionHandler.h"
 
 
@@ -92,30 +93,28 @@ bool ConnectionHandler::sendRegisterLoginFrame(const std::string& line) {
 bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
     //parsing
     std::string fopcodeString = line.substr(0, line.find(' '));//Follow Opcode
-    std::string restWithNum=line.substr(line.find(' '));
+    std::string restWithNum=line.substr(line.find(' ')+1);
     std::string usrNumString=restWithNum.substr(0,line.find(' '));
-    std::string usrNameList=restWithNum.substr(line.find(' '));
-    short followOpcode =StringToOpcode(fopcodeString);
-    short NumOfUsers =StringToOpcode(usrNumString);
+    std::string usrNameList=restWithNum.substr(restWithNum.find(' ')+1);
+    const char *followOpcode =fopcodeString.c_str();
+    short NumOfUsers =boost::lexical_cast<short>(usrNumString);
     char *OpByteArr1 = new char[2];
-    char *OpByteArr2 = new char[2];
-
-    shortToBytes(followOpcode, OpByteArr1);
-    shortToBytes(NumOfUsers, OpByteArr2);
-
-    bool resultOp = sendBytes(OpByteArr1, 2);
-    if(!resultOp){
+    shortToBytes(NumOfUsers, OpByteArr1);
+    bool charResult =sendBytes(followOpcode,1);
+    if (!charResult)return false;
+    bool resultNumUsr = sendBytes(OpByteArr1, 2);
+    if(!resultNumUsr){
         delete []OpByteArr1;
-        delete []OpByteArr2;
         return false;
     }
-    bool resultNum = sendBytes(OpByteArr2, 2);
-    if(!resultNum){
-        delete []OpByteArr1;
-        delete []OpByteArr2;
-        return false;
+    delete [] OpByteArr1;
+    std::vector<std::string> users = splitString(usrNameList, "[ \\s]+");
+    bool operation=true;
+    for(int i=0;i<users.size();i++){
+        operation=sendFrameAscii(users[i],'\0');
+        if(!operation)return false;
     }
-    return sendFrameAscii(usrNameList,'\0');
+    return true;
 }
 
 //Parsing and sending the line according to PM frame (Opcode 6)
@@ -322,7 +321,20 @@ short ConnectionHandler:: StringToOpcode(const std::string & s){
     return 0;
 }
 
+//Splits a string on a given regex expression
+std::vector<std::string> ConnectionHandler:: splitString(const std::string& stringToSplit, const std::string& regexPattern)
+{
+    std::vector<std::string> result;
+    const std::regex rgx(regexPattern);
+    std::sregex_token_iterator iter(stringToSplit.begin(), stringToSplit.end(), rgx, -1);
 
+    for (std::sregex_token_iterator end; iter != end; ++iter)
+    {
+        result.push_back(iter->str());
+    }
+
+    return result;
+}
 
 
 

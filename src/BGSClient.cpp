@@ -40,7 +40,7 @@ int main (int argc, char *argv[]) {
         std::string message;
         std::string first_token = line.substr(0, line.find(' '));
         if(line.find(' ')!= std::string::npos)
-            message = line.substr (line.find(' '));
+            message = line.substr (line.find(' ')+1);
         short Opcode =connectionHandler->StringToOpcode(first_token);
         if(Opcode!=0) {
             int len = line.length();

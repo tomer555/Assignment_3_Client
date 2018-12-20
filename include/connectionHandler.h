@@ -3,6 +3,7 @@
                                            
 #include <string>
 #include <iostream>
+#include <regex>
 #include <boost/asio.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -69,7 +70,7 @@ public:
 
     // Close down the connection properly.
     void close();
- 
+    std::vector<std::string> splitString(const std::string& stringToSplit, const std::string& regexPattern);
 };
  
 #endif
