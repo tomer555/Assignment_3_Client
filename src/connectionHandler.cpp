@@ -57,6 +57,7 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
         switch (Opcode) {
             case 1:
             case 2:
+            case 6:
                 return sendRegisterLoginFrame(line);
             case 3:
             case 7:
@@ -65,8 +66,8 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
                 return sendFollowUnfollowFrame(line);
             case 5:
                 return sendFrameAscii(line,'\0');
-            case 6:
-                return sendPmFrame(line);
+
+
             case 8:
                 return sendFrameAscii(line,'\0');
             default:
@@ -92,11 +93,10 @@ bool ConnectionHandler::sendRegisterLoginFrame(const std::string& line) {
 //Parsing and sending the line according to Follow/Unfollow frame (Opcode 4)
 bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
     //parsing
-    std::string fopcodeString = line.substr(0, line.find(' '));//Follow Opcode
     std::string restWithNum=line.substr(line.find(' ')+1);
     std::string usrNumString=restWithNum.substr(0,line.find(' '));
     std::string usrNameList=restWithNum.substr(restWithNum.find(' ')+1);
-    const char *followOpcode =fopcodeString.c_str();
+    const char *followOpcode =line.substr(0, line.find(' ')).c_str();
     short NumOfUsers =boost::lexical_cast<short>(usrNumString);
     char *OpByteArr1 = new char[2];
     shortToBytes(NumOfUsers, OpByteArr1);
@@ -109,10 +109,9 @@ bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
     }
     delete [] OpByteArr1;
     std::vector<std::string> users = splitString(usrNameList, "[ \\s]+");
-    bool operation=true;
     for(int i=0;i<users.size();i++){
-        operation=sendFrameAscii(users[i],'\0');
-        if(!operation)return false;
+        bool result=sendFrameAscii(" "+users[i],'\0');
+        if(!result)return false;
     }
     return true;
 }
