@@ -58,7 +58,7 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
             case 1:
             case 2:
             case 6:
-                return sendRegisterLoginFrame(line);
+                return sendPmRegisterLoginFrame(line);
             case 3:
             case 7:
                 return true;
@@ -66,8 +66,6 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
                 return sendFollowUnfollowFrame(line);
             case 5:
                 return sendFrameAscii(line,'\0');
-
-
             case 8:
                 return sendFrameAscii(line,'\0');
             default:
@@ -77,12 +75,10 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
     return false;
 }
 
-//Parsing and sending the line according to Register/Login frame (Opcode 1,2)
-bool ConnectionHandler::sendRegisterLoginFrame(const std::string& line) {
-    //parsing
+//Parsing and sending the line according to Pm/Register/Login frame (Opcode 1,2,6)
+bool ConnectionHandler::sendPmRegisterLoginFrame(const std::string& line) {
     std::string username=line.substr(0,line.find(' '));
     std::string password=line.substr(line.find(' '));
-    //sending
     bool resultUSR=sendFrameAscii(username,'\0');
     if(!resultUSR)
         return false;
@@ -103,29 +99,15 @@ bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
     bool charResult =sendBytes(followOpcode,1);
     if (!charResult)return false;
     bool resultNumUsr = sendBytes(OpByteArr1, 2);
-    if(!resultNumUsr){
-        delete []OpByteArr1;
-        return false;
-    }
     delete [] OpByteArr1;
+    if(!resultNumUsr)
+        return false;
     std::vector<std::string> users = splitString(usrNameList, "[ \\s]+");
     for(int i=0;i<users.size();i++){
         bool result=sendFrameAscii(" "+users[i],'\0');
         if(!result)return false;
     }
     return true;
-}
-
-//Parsing and sending the line according to PM frame (Opcode 6)
-bool ConnectionHandler::sendPmFrame(const std::string& line){
-    //parsing
-    std::string username=line.substr(0,line.find(' '));
-    std::string content=line.substr(line.find(' '));
-    //sending
-    bool resultUSR=sendFrameAscii(username,'\0');
-    if(!resultUSR) return false;
-    bool resultCNT=sendFrameAscii(content,'\0');
-    return resultCNT;
 }
 
 // Send a message(UTF-8) to the remote host. separated by the delimiter
@@ -154,13 +136,11 @@ bool ConnectionHandler::sendBytes(const char bytes[], int bytesToWrite) {
     return true;
 }
 
-
 //---------------Receiving Message from server-----------------------
 
 //Receiving line according to its Opcode.
 bool ConnectionHandler::getLine(std::string& line) {
     char *OpByteArr = new char[2];
-    //bool resultOpcode=getFrameTwoByte(OpByteArr);
     bool resultOpcode=getBytes(OpByteArr,2);
     if(!resultOpcode)
         return false;
@@ -171,7 +151,7 @@ bool ConnectionHandler::getLine(std::string& line) {
         case 10:
             return getAckFrame(line,OpByteArr);
         case 11:
-            return getErrorFrame(line);
+            return getErrorFrame(line,OpByteArr);
         default:
             return false;
     }
@@ -180,19 +160,18 @@ bool ConnectionHandler::getLine(std::string& line) {
 //Receive and decode the bytes according to Notification frame (Opcode 9)
 bool ConnectionHandler::getNotificationFrame(std::string &frame) {
     frame.append("NOTIFICATION ");
-    char *OpByteArr = new char[2];
-    bool resultOpcode=getBytes(OpByteArr,2);
-    delete []OpByteArr;
-    if(!resultOpcode)return false;
-    short Opcode=bytesToShort(OpByteArr);
-    if (Opcode==0)
+    char *notificationType=new char();
+    bool resultNotification=getBytes(notificationType,1);
+    if (*notificationType=='0')
         frame.append("PM ");
     else
         frame.append("Public ");
+    delete notificationType;
+    if(!resultNotification)return false;
     std::string postingUser;
     bool resultPosting=getFrameAscii(postingUser,'\0');
     if(!resultPosting)return false;
-    frame.append(postingUser+" ");
+    frame.append(postingUser);
     std::string content;
     bool resultContent=getFrameAscii(content,'\0');
     if(!resultContent)return false;
@@ -206,58 +185,42 @@ bool ConnectionHandler::getAckFrame(std::string &frame,char *OpByteArr) {
     bool resultOpcode=getBytes(OpByteArr,2);
     short Opcode=bytesToShort(OpByteArr);
     if(!resultOpcode)return false;
-    frame.append(boost::lexical_cast<std::string>(Opcode)+" ");
+    frame.append(boost::lexical_cast<std::string>(Opcode));
     switch (Opcode){
         case 8: {
-            bool numPostsResult = getBytes(OpByteArr, 2);
-            if (!numPostsResult)
+            if(!getShortAndAppend(true, true,OpByteArr,frame))
                 return false;
-            short numPosts = bytesToShort(OpByteArr);
-            frame.append(boost::lexical_cast<std::string>(numPosts) + " ");
-            bool numOfFollowersResult = getBytes(OpByteArr, 2);
-            if (!numOfFollowersResult)
+            if(!getShortAndAppend(false, true,OpByteArr,frame))
                 return false;
-            short numOfFollowers = bytesToShort(OpByteArr);
-            frame.append(boost::lexical_cast<std::string>(numOfFollowers) + " ");
-            bool numOfFollowingResult = getBytes(OpByteArr, 2);
-            if (!numOfFollowingResult)
-                return false;
-            short numOfFollowing = bytesToShort(OpByteArr);
-            frame.append(boost::lexical_cast<std::string>(numOfFollowing));
-            return true;
+            return getShortAndAppend(false, false, OpByteArr, frame);
         }
         case 4:
-        case 7:
-            bool numOfUsersResult=getBytes(OpByteArr,2);
-            if(!numOfUsersResult)
+        case 7: {
+            bool numOfUsersResult = getBytes(OpByteArr, 2);
+            if (!numOfUsersResult)
                 return false;
-            short numOfUsers=bytesToShort(OpByteArr);
-            frame.append(boost::lexical_cast<std::string>(numOfUsers));
-            for(int i=0;i<numOfUsers;i++){
+            short numOfUsers = bytesToShort(OpByteArr);
+            frame.append(' ' + boost::lexical_cast<std::string>(numOfUsers));
+            for (int i = 0; i < numOfUsers; i++) {
                 std::string user;
-                bool resultUser=getFrameAscii(user,'\0');
-                if(!resultUser) return false;
-                frame.append(' '+user);
+                bool resultUser = getFrameAscii(user, '\0');
+                if (!resultUser) return false;
+                frame.append(' ' + user);
             }
             return true;
+        }
+        default:
+            return true;
     }
-    return false;
-
 }
 
 //Receive and decode the bytes according to Error frame (Opcode 11)
-bool ConnectionHandler::getErrorFrame(std::string &frame) {
+bool ConnectionHandler::getErrorFrame(std::string &frame,char *OpByteArr) {
     frame.append("Error ");
-    char *OpByteArr = new char[2];
-    bool resultOpcode=getBytes(OpByteArr,2);
-    delete []OpByteArr;
-    if(!resultOpcode)return false;
-    short Opcode=bytesToShort(OpByteArr);
-    frame.append(boost::lexical_cast<std::string>(Opcode));
-    return true;
+    return getShortAndAppend(false, false,OpByteArr,frame);
 }
 
-// Get Ascii data from the server until the delimiter character
+// Get Ascii data from the server until the delimiter character.. will not append the delimiter
 // Returns false in case connection closed before null can be read.
 bool ConnectionHandler::getFrameAscii(std::string& frame, char delimiter) {
     char ch;
@@ -275,8 +238,6 @@ bool ConnectionHandler::getFrameAscii(std::string& frame, char delimiter) {
     }
     return true;
 }
-
-
 
 // Read a fixed number of bytes from the server - blocking.
 // Returns false in case the connection is closed before bytesToRead bytes can be read.
@@ -308,7 +269,7 @@ void ConnectionHandler:: shortToBytes(short num, char* bytesArr){
 }
 
 
-//Static Function to convert String to Opcode
+//Static Function to convert String to known Opcode.
 short ConnectionHandler:: StringToOpcode(const std::string & s){
     if(s=="REGISTER")
         return 1;
@@ -335,7 +296,7 @@ short ConnectionHandler:: StringToOpcode(const std::string & s){
     return 0;
 }
 
-//Splits a string on a given regex expression
+//Splits a string on a given regex expression.
 std::vector<std::string> ConnectionHandler:: splitString(const std::string& stringToSplit, const std::string& regexPattern)
 {
     std::vector<std::string> result;
@@ -349,6 +310,24 @@ std::vector<std::string> ConnectionHandler:: splitString(const std::string& stri
 
     return result;
 }
+
+bool ConnectionHandler::getShortAndAppend(bool prefix, bool suffix, char *bytesArr,std::string frame) {
+    bool result = getBytes(bytesArr, 2);
+    if (!result)
+        return false;
+    short num = bytesToShort(bytesArr);
+    if(prefix & suffix)
+        frame.append(' '+boost::lexical_cast<std::string>(num) +' ');
+    if(prefix & !suffix)
+        frame.append(boost::lexical_cast<std::string>(num) +' ');
+    if(suffix & !prefix)
+        frame.append(' '+boost::lexical_cast<std::string>(num));
+    if(!prefix & !suffix)
+        frame.append(boost::lexical_cast<std::string>(num));
+    return true;
+}
+
+
 
 
 

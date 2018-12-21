@@ -50,7 +50,7 @@ public:
 
     bool getAckFrame(std::string& frame,char *OpByteArr);
 
-    bool getErrorFrame(std::string& frame);
+    bool getErrorFrame(std::string& frame,char *OpByteArr);
  
     // Send a message to the remote host.
     // Returns false in case connection is closed before all the data is sent.
@@ -62,9 +62,9 @@ public:
 
     void shortToBytes(short num, char* bytesArr);
 
-    bool sendRegisterLoginFrame(const std::string& line);
+    bool sendPmRegisterLoginFrame(const std::string& line);
 
-    bool sendPmFrame(const std::string& line);
+    bool getShortAndAppend(bool prefix,bool suffix,char* bytesArr,std::string);
 
     bool sendFollowUnfollowFrame(const std::string& line);
 

@@ -43,12 +43,10 @@ int main (int argc, char *argv[]) {
             message = line.substr (line.find(' ')+1);
         short Opcode =connectionHandler->StringToOpcode(first_token);
         if(Opcode!=0) {
-            int len = line.length();
             if (!connectionHandler->sendLine(message,Opcode)) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
-            std::cout << "Sent " << len << " bytes to server without delimiter bytes" << std::endl;
         } else
             std::cout << "No such Command exists: " << first_token << ", please try again" << std::endl;
     }
