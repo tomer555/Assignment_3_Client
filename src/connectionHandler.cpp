@@ -145,16 +145,22 @@ bool ConnectionHandler::getLine(std::string& line) {
     if(!resultOpcode)
         return false;
     short Opcode=bytesToShort(OpByteArr);
+    bool result= false;
     switch (Opcode) {
         case 9:
-            return getNotificationFrame(line);
+            result=getNotificationFrame(line);
+            break;
         case 10:
-            return getAckFrame(line,OpByteArr);
+            result=getAckFrame(line,OpByteArr);
+            break;
         case 11:
-            return getErrorFrame(line,OpByteArr);
+            result=getErrorFrame(line,OpByteArr);
+            break;
         default:
-            return false;
+            break;
     }
+    delete [] OpByteArr;
+    return result;
 }
 
 //Receive and decode the bytes according to Notification frame (Opcode 9)
