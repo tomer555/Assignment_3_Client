@@ -44,11 +44,11 @@ public:
     // Returns false in case connection closed before null can be read.
     bool getFrameAscii(std::string& frame, char delimiter);
 
-    bool getFrameTwoByte(char* bytesArr);
+
 
     bool getNotificationFrame(std::string& frame);
 
-    bool getAckFrame(std::string& frame);
+    bool getAckFrame(std::string& frame,char *OpByteArr);
 
     bool getErrorFrame(std::string& frame);
  

@@ -160,16 +160,16 @@ bool ConnectionHandler::sendBytes(const char bytes[], int bytesToWrite) {
 //Receiving line according to its Opcode.
 bool ConnectionHandler::getLine(std::string& line) {
     char *OpByteArr = new char[2];
-    bool resultOpcode=getFrameTwoByte(OpByteArr);
+    //bool resultOpcode=getFrameTwoByte(OpByteArr);
+    bool resultOpcode=getBytes(OpByteArr,2);
     if(!resultOpcode)
         return false;
     short Opcode=bytesToShort(OpByteArr);
-    delete []OpByteArr;
     switch (Opcode) {
         case 9:
             return getNotificationFrame(line);
         case 10:
-            return getAckFrame(line);
+            return getAckFrame(line,OpByteArr);
         case 11:
             return getErrorFrame(line);
         default:
@@ -181,7 +181,7 @@ bool ConnectionHandler::getLine(std::string& line) {
 bool ConnectionHandler::getNotificationFrame(std::string &frame) {
     frame.append("NOTIFICATION ");
     char *OpByteArr = new char[2];
-    bool resultOpcode=getFrameTwoByte(OpByteArr);
+    bool resultOpcode=getBytes(OpByteArr,2);
     delete []OpByteArr;
     if(!resultOpcode)return false;
     short Opcode=bytesToShort(OpByteArr);
@@ -201,26 +201,55 @@ bool ConnectionHandler::getNotificationFrame(std::string &frame) {
 }
 
 //Receive and decode the bytes according to ACK frame (Opcode 10)
-bool ConnectionHandler::getAckFrame(std::string &frame) {
+bool ConnectionHandler::getAckFrame(std::string &frame,char *OpByteArr) {
     frame.append("ACK ");
-    char *OpByteArr = new char[2];
-    bool resultOpcode=getFrameTwoByte(OpByteArr);
-    delete []OpByteArr;
-    if(!resultOpcode)return false;
+    bool resultOpcode=getBytes(OpByteArr,2);
     short Opcode=bytesToShort(OpByteArr);
-    frame.append(boost::lexical_cast<std::string>(Opcode));
-    std::string optional;
-    bool resultOptinal=getFrameAscii(optional,'\0');
-    if(!resultOptinal)return false;
-    frame.append(optional);
-    return true;
+    if(!resultOpcode)return false;
+    frame.append(boost::lexical_cast<std::string>(Opcode)+" ");
+    switch (Opcode){
+        case 8: {
+            bool numPostsResult = getBytes(OpByteArr, 2);
+            if (!numPostsResult)
+                return false;
+            short numPosts = bytesToShort(OpByteArr);
+            frame.append(boost::lexical_cast<std::string>(numPosts) + " ");
+            bool numOfFollowersResult = getBytes(OpByteArr, 2);
+            if (!numOfFollowersResult)
+                return false;
+            short numOfFollowers = bytesToShort(OpByteArr);
+            frame.append(boost::lexical_cast<std::string>(numOfFollowers) + " ");
+            bool numOfFollowingResult = getBytes(OpByteArr, 2);
+            if (!numOfFollowingResult)
+                return false;
+            short numOfFollowing = bytesToShort(OpByteArr);
+            frame.append(boost::lexical_cast<std::string>(numOfFollowing));
+            return true;
+        }
+        case 4:
+        case 7:
+            bool numOfUsersResult=getBytes(OpByteArr,2);
+            if(!numOfUsersResult)
+                return false;
+            short numOfUsers=bytesToShort(OpByteArr);
+            frame.append(boost::lexical_cast<std::string>(numOfUsers));
+            for(int i=0;i<numOfUsers;i++){
+                std::string user;
+                bool resultUser=getFrameAscii(user,'\0');
+                if(!resultUser) return false;
+                frame.append(' '+user);
+            }
+            return true;
+    }
+    return false;
+
 }
 
 //Receive and decode the bytes according to Error frame (Opcode 11)
 bool ConnectionHandler::getErrorFrame(std::string &frame) {
     frame.append("Error ");
     char *OpByteArr = new char[2];
-    bool resultOpcode=getFrameTwoByte(OpByteArr);
+    bool resultOpcode=getBytes(OpByteArr,2);
     delete []OpByteArr;
     if(!resultOpcode)return false;
     short Opcode=bytesToShort(OpByteArr);
@@ -237,7 +266,8 @@ bool ConnectionHandler::getFrameAscii(std::string& frame, char delimiter) {
     try {
         do{
             getBytes(&ch, 1);
-            frame.append(1, ch);
+            if(ch!='\0')
+                frame.append(1, ch);
         }while (delimiter != ch);
     } catch (std::exception& e) {
         std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
@@ -246,20 +276,7 @@ bool ConnectionHandler::getFrameAscii(std::string& frame, char delimiter) {
     return true;
 }
 
-//Get 2 bytes data from the server
-bool ConnectionHandler::getFrameTwoByte(char* bytesArr){
-    char ch1;
-    char ch2;
-    try {
-        bytesArr[0]=getBytes(&ch1,1);
-        bytesArr[1]=getBytes(&ch2,1);
-    }
-    catch (std::exception& e) {
-        std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
-        return false;
-    }
-    return true;
-}
+
 
 // Read a fixed number of bytes from the server - blocking.
 // Returns false in case the connection is closed before bytesToRead bytes can be read.
@@ -279,15 +296,13 @@ bool ConnectionHandler::getBytes(char bytes[], unsigned int bytesToRead) {
 }
 
 //-----------------byteToshort\ShortToByte--------------
-short ConnectionHandler::bytesToShort(char* bytesArr)
-{
+short ConnectionHandler::bytesToShort(char* bytesArr){
     short result = (short)((bytesArr[0] & 0xff) << 8);
     result += (short)(bytesArr[1] & 0xff);
     return result;
 }
 
-void ConnectionHandler:: shortToBytes(short num, char* bytesArr)
-{
+void ConnectionHandler:: shortToBytes(short num, char* bytesArr){
     bytesArr[0] = ((num >> 8) & 0xFF);
     bytesArr[1] = (num & 0xFF);
 }
