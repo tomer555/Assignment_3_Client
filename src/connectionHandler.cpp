@@ -223,7 +223,8 @@ bool ConnectionHandler::getAckFrame(std::string &frame,char *OpByteArr) {
 //Receive and decode the bytes according to Error frame (Opcode 11)
 bool ConnectionHandler::getErrorFrame(std::string &frame,char *OpByteArr) {
     frame.append("Error ");
-    return getShortAndAppend(false, false,OpByteArr,frame);
+    if(!getShortAndAppend(false, false,OpByteArr,frame))return false;
+    return true;
 }
 
 // Get Ascii data from the server until the delimiter character.. will not append the delimiter
@@ -317,7 +318,7 @@ std::vector<std::string> ConnectionHandler:: splitString(const std::string& stri
     return result;
 }
 
-bool ConnectionHandler::getShortAndAppend(bool prefix, bool suffix, char *bytesArr,std::string frame) {
+bool ConnectionHandler::getShortAndAppend(bool prefix, bool suffix, char *bytesArr,std::string & frame) {
     bool result = getBytes(bytesArr, 2);
     if (!result)
         return false;

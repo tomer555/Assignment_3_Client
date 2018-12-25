@@ -64,7 +64,7 @@ public:
 
     bool sendPmRegisterLoginFrame(const std::string& line);
 
-    bool getShortAndAppend(bool prefix,bool suffix,char* bytesArr,std::string);
+    bool getShortAndAppend(bool prefix,bool suffix,char* bytesArr,std::string &frame);
 
     bool sendFollowUnfollowFrame(const std::string& line);
 
