@@ -168,7 +168,7 @@ bool ConnectionHandler::getNotificationFrame(std::string &frame) {
     frame.append("NOTIFICATION ");
     char *notificationType=new char();
     bool resultNotification=getBytes(notificationType,1);
-    if (*notificationType=='0')
+    if (*notificationType=='\000')
         frame.append("PM ");
     else
         frame.append("Public ");
@@ -326,9 +326,9 @@ bool ConnectionHandler::getShortAndAppend(bool prefix, bool suffix, char *bytesA
     if(prefix & suffix)
         frame.append(' '+boost::lexical_cast<std::string>(num) +' ');
     if(prefix & !suffix)
-        frame.append(boost::lexical_cast<std::string>(num) +' ');
-    if(suffix & !prefix)
         frame.append(' '+boost::lexical_cast<std::string>(num));
+    if(suffix & !prefix)
+        frame.append(boost::lexical_cast<std::string>(num)+' ');
     if(!prefix & !suffix)
         frame.append(boost::lexical_cast<std::string>(num));
     return true;
