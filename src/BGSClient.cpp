@@ -22,7 +22,6 @@ int main (int argc, char *argv[]) {
     //Establishing connection with a server
     ConnectionHandler *connectionHandler=new ConnectionHandler (host, port);
     if (!connectionHandler->connect()) {
-        std::cerr << "Cannot connect to " << host << ":" << port << std::endl;
         return 1;
     }
     //Creating thread1 : reading from Socket
@@ -44,7 +43,6 @@ int main (int argc, char *argv[]) {
         short Opcode =connectionHandler->StringToOpcode(first_token);
         if(Opcode!=0) {
             if (!connectionHandler->sendLine(message,Opcode)) {
-                std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
         } else
