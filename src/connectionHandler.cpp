@@ -75,8 +75,15 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
 
 //Parsing and sending the line according to Pm/Register/Login frame (Opcode 1,2,6)
 bool ConnectionHandler::sendPmRegisterLoginFrame(const std::string& line) {
-    std::string username=line.substr(0,line.find(' '));
-    std::string password=line.substr(line.find(' '));
+    std::string username;
+    std::string password;
+    if(line.find(' ')!=-1) {
+        username = line.substr(0, line.find(' '));
+        password = line.substr(line.find(' '));
+    } else{
+        username=line;
+        password="";
+    }
     bool resultUSR=sendFrameAscii(username,'\0');
     if(!resultUSR)
         return false;
