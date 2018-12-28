@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include "../include/connectionHandler.h"
 #include "../include/SocketReader.h"
 
@@ -24,14 +26,19 @@ int main (int argc, char *argv[]) {
     if (!connectionHandler->connect()) {
         return 1;
     }
-    //Creating thread1 : reading from Socket
-    SocketReader reader(connectionHandler);
-    std::thread th1(&SocketReader::run,reader);
+    //Creating thread1 : reading from Socket and bool flag to know ACK 3 got accepted
+    bool * terminate= new bool(false);
+    bool * falseTerminate= new bool(false);
+    std::mutex mutex;
+
+    std::condition_variable cond;
+    SocketReader reader(connectionHandler,falseTerminate,terminate,cond,mutex);
+    std::thread th1(&SocketReader::run,&reader);
 
 
 	//Accepting input string from user. Exit on command: LOGOUT
 	std::string line;
-    while (line.find("LOGOUT")== std::string::npos) {
+    while (!(*terminate) || (line!=("LOGOUT")))  {
         const short bufsize = 1024;
         char buf[bufsize];
         std::cin.getline(buf, bufsize);
@@ -47,12 +54,19 @@ int main (int argc, char *argv[]) {
             }
         } else
             std::cout << "No such Command exists: " << first_token << ", please try again" << std::endl;
+       if(line=="LOGOUT") {
+           std::unique_lock<std::mutex> lock {mutex};
+           while (!(*terminate) && !(*falseTerminate)) {
+               cond.wait(lock);
+           }
+           (*falseTerminate)= false;
+       }
     }
     //waiting for thread1 to finish: waiting server response : ACK 3(LOGOUT)
     th1.join();
     //Closing the connection with the server
     delete connectionHandler;
-
+    delete terminate;
     return 0;
 }
 
