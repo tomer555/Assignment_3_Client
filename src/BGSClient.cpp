@@ -67,6 +67,7 @@ int main (int argc, char *argv[]) {
     //Closing the connection with the server
     delete connectionHandler;
     delete terminate;
+    delete falseTerminate;
     return 0;
 }
 
