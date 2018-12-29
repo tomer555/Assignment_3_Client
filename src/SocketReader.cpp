@@ -1,11 +1,7 @@
 
 
 #include "../include/SocketReader.h"
-SocketReader::SocketReader(ConnectionHandler *handler,bool * falseTerminate, bool * terminate,std::condition_variable & cond, std::mutex& mutex):cond(cond),mutex(mutex) {
-    this->handler=handler;
-    this->terminate=terminate;
-    this->falseTerminate= falseTerminate;
-}
+SocketReader::SocketReader(ConnectionHandler *handler,bool * falseTerminate, bool * terminate,std::condition_variable & cond, std::mutex& mutex):cond(cond),mutex(mutex),handler(handler),terminate(terminate),falseTerminate(falseTerminate) {}
 void SocketReader::run() {
 
     while (true){

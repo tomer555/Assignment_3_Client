@@ -8,11 +8,13 @@
 
 class SocketReader {
 private:
+    std::condition_variable & cond;
+    std::mutex& mutex;
     ConnectionHandler * handler;
     bool * terminate;
     bool * falseTerminate;
-    std::mutex& mutex;
-    std::condition_variable & cond;
+
+
 public:
     SocketReader(ConnectionHandler * handler,bool * falseTerminate, bool * terminate,std::condition_variable &cond, std::mutex& mutex);
     void run();

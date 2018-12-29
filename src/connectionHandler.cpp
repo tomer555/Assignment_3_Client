@@ -77,7 +77,7 @@ bool ConnectionHandler::sendLine(std::string& line,short Opcode) {
 bool ConnectionHandler::sendPmRegisterLoginFrame(const std::string& line) {
     std::string username;
     std::string password;
-    if(line.find(' ')!=-1) {
+    if((line.find(' ') != std::string::npos)) {
         username = line.substr(0, line.find(' '));
         password = line.substr(line.find(' '));
     } else{
@@ -108,7 +108,7 @@ bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
     if(!resultNumUsr)
         return false;
     std::vector<std::string> users = splitString(usrNameList, "[ \\s]+");
-    for(int i=0;i<users.size();i++){
+    for(unsigned int i=0;i<users.size();i++){
         bool result=sendFrameAscii(" "+users[i],'\0');
         if(!result)return false;
     }
