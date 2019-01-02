@@ -211,7 +211,7 @@ bool ConnectionHandler::getAckFrame(std::string &frame,char *OpByteArr) {
             if (!numOfUsersResult)
                 return false;
             short numOfUsers = bytesToShort(OpByteArr);
-            frame.append(' ' + boost::lexical_cast<std::string>(numOfUsers));
+            frame.append(' ' + boost::lexical_cast<string>(numOfUsers));
             for (int i = 0; i < numOfUsers; i++) {
                 std::string user;
                 bool resultUser = getFrameAscii(user, '\0');
@@ -228,8 +228,7 @@ bool ConnectionHandler::getAckFrame(std::string &frame,char *OpByteArr) {
 //Receive and decode the bytes according to Error frame (Opcode 11)
 bool ConnectionHandler::getErrorFrame(std::string &frame,char *OpByteArr) {
     frame.append("Error ");
-    if(!getShortAndAppend(false, false,OpByteArr,frame))return false;
-    return true;
+    return getShortAndAppend(false, false, OpByteArr, frame);
 }
 
 // Get Ascii data from the server until the delimiter character.. will not append the delimiter
