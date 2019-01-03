@@ -21,7 +21,7 @@ void SocketReader::run() {
         // we filled up to the \n char - we must make sure now that a 0 char is also present. So we truncate last character.
         std::cout << answer << std::endl;
 
-        if(answer=="Error 3"){
+        if(answer=="ERROR 3"){
             std::unique_lock<std::mutex> lock {mutex};
             (*falseTerminate)= true;
             cond.notify_all();

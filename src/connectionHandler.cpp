@@ -227,7 +227,7 @@ bool ConnectionHandler::getAckFrame(std::string &frame,char *OpByteArr) {
 
 //Receive and decode the bytes according to Error frame (Opcode 11)
 bool ConnectionHandler::getErrorFrame(std::string &frame,char *OpByteArr) {
-    frame.append("Error ");
+    frame.append("ERROR ");
     return getShortAndAppend(false, false, OpByteArr, frame);
 }
 
