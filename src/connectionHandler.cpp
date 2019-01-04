@@ -79,7 +79,7 @@ bool ConnectionHandler::sendPmRegisterLoginFrame(const std::string& line) {
     std::string password;
     if((line.find(' ') != std::string::npos)) {
         username = line.substr(0, line.find(' '));
-        password = line.substr(line.find(' '));
+        password = line.substr(line.find(' ')+1);
     } else{
         username=line;
         password="";
@@ -98,10 +98,16 @@ bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
     std::string usrNumString=restWithNum.substr(0,line.find(' '));
     std::string usrNameList=restWithNum.substr(restWithNum.find(' ')+1);
     const char *followOpcode =line.substr(0, line.find(' ')).c_str();
+    char *c=new char();
+    if(*followOpcode=='0')
+        *c=0;
+    else
+        *c=1;
+
     short NumOfUsers =boost::lexical_cast<short>(usrNumString);
     char *OpByteArr1 = new char[2];
     shortToBytes(NumOfUsers, OpByteArr1);
-    bool charResult =sendBytes(followOpcode,1);
+    bool charResult =sendBytes(c,1);
     if (!charResult)return false;
     bool resultNumUsr = sendBytes(OpByteArr1, 2);
     delete [] OpByteArr1;
@@ -109,7 +115,7 @@ bool ConnectionHandler::sendFollowUnfollowFrame(const std::string& line){
         return false;
     std::vector<std::string> users = splitString(usrNameList, "[ \\s]+");
     for(unsigned int i=0;i<users.size();i++){
-        bool result=sendFrameAscii(" "+users[i],'\0');
+        bool result=sendFrameAscii(users[i],'\0');
         if(!result)return false;
     }
     return true;
