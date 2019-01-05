@@ -192,7 +192,7 @@ bool ConnectionHandler::getNotificationFrame(std::string &frame) {
     std::string content;
     bool resultContent=getFrameAscii(content,'\0');
     if(!resultContent)return false;
-    frame.append(content);
+    frame.append(" "+content);
     return true;
 }
 
